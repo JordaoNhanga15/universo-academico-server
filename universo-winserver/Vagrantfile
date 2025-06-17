@@ -17,3 +17,4 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "shell", path: "setup.ps1", privileged: false
 end
+
