@@ -17,15 +17,14 @@ if (-not (Test-Command git)) { Write-Host "❌ Git não está disponível. Verif
 if (-not (Test-Command npm)) { Write-Host "❌ npm não está disponível. Verifique o PATH."; exit 1 }
 if (-not (Test-Command pm2)) { Write-Host "❌ pm2 não encontrado. Instalando via npm..."; npm install -g pm2 }
 
-# === Diretório de Trabalho ===
+# === Clonagem dos repositórios ===
 
 $workspace = "C:\workspace"
 if (!(Test-Path $workspace)) {
     New-Item -ItemType Directory -Path $workspace | Out-Null
 }
-Set-Location $workspace
 
-# === Clonagem dos repositórios ===
+Set-Location $workspace
 
 if (!(Test-Path "universo-academico")) {
     Write-Host "[CLONE] Clonando frontend..."
@@ -57,38 +56,17 @@ npx.cmd node ace migration:run
 pm2 start server.js --name universo-backend
 pm2 save
 
-# === Instalação e Configuração do Nginx ===
+# === Configurar Nginx ===
 
-Write-Host "[NGINX] Verificando instalação..."
+Write-Host "[CONFIG] Configurando Nginx..."
 
-$nginxBase = "C:\nginx"
-$nginxVersion = "1.24.0"
-$nginxFolder = "$nginxBase\nginx-$nginxVersion"
-$nginxExe = "$nginxFolder\nginx.exe"
-$confPath = "$nginxFolder\conf\nginx.conf"
+$nginxRoot = "C:\nginx\nginx-1.24.0"
+$nginxExe = "$nginxRoot\nginx.exe"
+$confPath = "$nginxRoot\conf\nginx.conf"
 $frontendDist = "C:/workspace/universo-academico/dist"
 
-if (!(Test-Path $nginxExe)) {
-    Write-Host "[NGINX] Nginx não encontrado. Baixando..."
-
-    $zipPath = "$nginxBase\nginx.zip"
-    $downloadUrl = "https://nginx.org/download/nginx-$nginxVersion.zip"
-
-    if (!(Test-Path $nginxBase)) {
-        New-Item -ItemType Directory -Path $nginxBase | Out-Null
-    }
-
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath
-
-    Write-Host "[NGINX] Extraindo..."
-    Expand-Archive -Path $zipPath -DestinationPath $nginxBase -Force
-
-    Remove-Item $zipPath
-}
-
-Write-Host "[CONFIG] Gerando configuração do nginx.conf..."
-
-@"
+if (Test-Path $nginxExe) {
+    @"
 worker_processes 1;
 
 events {
@@ -125,10 +103,13 @@ http {
 }
 "@ | Set-Content -Path $confPath -Force
 
-Write-Host "[NGINX] Reiniciando nginx..."
-Stop-Process -Name nginx -ErrorAction SilentlyContinue
-Start-Process $nginxExe
+    Write-Host "[NGINX] Reiniciando nginx..."
+    Stop-Process -Name nginx -ErrorAction SilentlyContinue
+    Start-Process $nginxExe
+} else {
+    Write-Host "❌ Nginx não encontrado no caminho: $nginxExe"
+    exit 1
+}
 
 Write-Host "✅ Setup concluído com sucesso!"
 Write-Host "🌐 Acesse: http://192.190.90.12"
-
